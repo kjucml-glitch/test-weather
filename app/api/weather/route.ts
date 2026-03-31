@@ -83,13 +83,8 @@ function resolveCity(input: string): string {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const city = searchParams.get('city');
-
-  if (!city || city.trim() === '') {
-    return NextResponse.json(
-      { error: '도시 이름을 입력해주세요.' },
-      { status: 400 }
-    );
-  }
+  const lat = searchParams.get('lat');
+  const lon = searchParams.get('lon');
 
   const apiKey = process.env.OPENWEATHER_API_KEY;
   if (!apiKey) {
@@ -99,9 +94,28 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const resolvedCity = resolveCity(city);
-  const encodedCity = encodeURIComponent(resolvedCity);
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodedCity}&appid=${apiKey}&units=metric&lang=kr`;
+  let url: string;
+
+  if (lat && lon) {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lon);
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return NextResponse.json(
+        { error: '유효하지 않은 좌표입니다.' },
+        { status: 400 }
+      );
+    }
+    url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric&lang=kr`;
+  } else if (city && city.trim() !== '') {
+    const resolvedCity = resolveCity(city);
+    const encodedCity = encodeURIComponent(resolvedCity);
+    url = `https://api.openweathermap.org/data/2.5/weather?q=${encodedCity}&appid=${apiKey}&units=metric&lang=kr`;
+  } else {
+    return NextResponse.json(
+      { error: '도시 이름 또는 좌표를 입력해주세요.' },
+      { status: 400 }
+    );
+  }
 
   const res = await fetch(url, { cache: 'no-store' });
   const data = await res.json();

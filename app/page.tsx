@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 
 interface WeatherData {
   name: string;
@@ -35,6 +35,43 @@ export default function Home() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(true);
+
+  const fetchWeatherByCoords = useCallback(async (lat: number, lon: number) => {
+    setLoading(true);
+    setError('');
+    setWeather(null);
+    try {
+      const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? '날씨 정보를 불러오지 못했습니다.');
+      } else {
+        setWeather(data);
+      }
+    } catch {
+      setError('서버와 통신 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+      setLocating(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocating(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        fetchWeatherByCoords(position.coords.latitude, position.coords.longitude);
+      },
+      () => {
+        setLocating(false);
+      },
+      { timeout: 10000 }
+    );
+  }, [fetchWeatherByCoords]);
 
   const fetchWeather = async (e: FormEvent) => {
     e.preventDefault();
@@ -77,7 +114,7 @@ export default function Home() {
         </h1>
 
         {/* 검색 폼 */}
-        <form onSubmit={fetchWeather} className="flex gap-2 mb-6">
+        <form onSubmit={fetchWeather} className="flex gap-2 mb-4">
           <input
             type="text"
             value={city}
@@ -93,6 +130,32 @@ export default function Home() {
             {loading ? '검색 중…' : '검색'}
           </button>
         </form>
+
+        {/* 현재 위치 버튼 */}
+        <button
+          type="button"
+          onClick={() => {
+            if (!navigator.geolocation) {
+              setError('이 브라우저에서는 위치 서비스를 사용할 수 없습니다.');
+              return;
+            }
+            setLocating(true);
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                fetchWeatherByCoords(position.coords.latitude, position.coords.longitude);
+              },
+              () => {
+                setError('위치 정보를 가져올 수 없습니다. 위치 권한을 허용해 주세요.');
+                setLocating(false);
+              },
+              { timeout: 10000 }
+            );
+          }}
+          disabled={loading || locating}
+          className="w-full mb-6 px-4 py-2.5 bg-white/30 text-white font-medium rounded-2xl shadow-md hover:bg-white/40 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          📍 {locating ? '현재 위치 확인 중…' : '현재 위치 날씨 보기'}
+        </button>
 
         {/* 에러 메시지 */}
         {error && (
