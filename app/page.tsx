@@ -82,7 +82,7 @@ export default function Home() {
             type="text"
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            placeholder="도시 이름 입력 (예: Seoul, Tokyo)"
+            placeholder="도시 이름 입력 (예: 서울, Seoul, Tokyo)"
             className="flex-1 px-4 py-3 rounded-2xl text-gray-800 bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white shadow-lg placeholder:text-gray-400"
           />
           <button
